@@ -25,7 +25,7 @@ LINE_WIDTH=3
 clock=pygame.time.Clock()
 screen=pygame.display.set_mode((WIDTH,HEIGHT));
 
-class Square:
+class Square():
     def __init__(self,color,pos):
         self.color=color
         self.x=pos[0]
@@ -49,36 +49,117 @@ class Square:
         pygame.draw.lines(screen,LINE_COLOR,True,corners,LINE_WIDTH)
         screen.unlock()
 
+class Block():
+    def __init__(self,type):
+        self.type=type
+        self.squares=[]
+        if(type==0): #4 squares vertical
+            self.color=RED
+            self.y=3*-HALF_WIDTH
+            self.x=220
+            self.squares.append(Square(self.color,(self.x,self.y-2*FULL_WIDTH)))
+            self.squares.append(Square(self.color,(self.x,self.y-FULL_WIDTH)))
+            self.squares.append(Square(self.color,(self.x,self.y)))
+            self.squares.append(Square(self.color,(self.x,self.y+FULL_WIDTH)))
+        elif(type==1): #T
+            self.color=ORANGE
+            self.y=-HALF_WIDTH
+            self.x=220
+            self.squares.append(Square(self.color,(self.x,self.y-FULL_WIDTH)))
+            self.squares.append(Square(self.color,(self.x-FULL_WIDTH,self.y)))
+            self.squares.append(Square(self.color,(self.x,self.y)))
+            self.squares.append(Square(self.color,(self.x+FULL_WIDTH,self.y)))
+        elif(type==2): #square squares
+            self.color=YELLOW
+            self.y=-FULL_WIDTH
+            self.x=240
+            self.squares.append(Square(self.color,(self.x-HALF_WIDTH,self.y-HALF_WIDTH)))
+            self.squares.append(Square(self.color,(self.x+HALF_WIDTH,self.y-HALF_WIDTH)))
+            self.squares.append(Square(self.color,(self.x+HALF_WIDTH,self.y+HALF_WIDTH)))
+            self.squares.append(Square(self.color,(self.x-HALF_WIDTH,self.y+HALF_WIDTH)))
+        elif(type==3): #inversed z
+            self.color=GREEN
+            self.y=-HALF_WIDTH
+            self.x=220
+            self.squares.append(Square(self.color,(self.x-FULL_WIDTH,self.y)))
+            self.squares.append(Square(self.color,(self.x,self.y)))
+            self.squares.append(Square(self.color,(self.x,self.y-FULL_WIDTH)))
+            self.squares.append(Square(self.color,(self.x+FULL_WIDTH,self.y-FULL_WIDTH)))
+        elif(type==4): #z
+            self.color=BLUE
+            self.y=-HALF_WIDTH
+            self.x=220
+            self.squares.append(Square(self.color,(self.x+FULL_WIDTH,self.y)))
+            self.squares.append(Square(self.color,(self.x,self.y)))
+            self.squares.append(Square(self.color,(self.x,self.y-FULL_WIDTH)))
+            self.squares.append(Square(self.color,(self.x-FULL_WIDTH,self.y-FULL_WIDTH)))
+        elif(type==5): #inversed L
+            self.color=CYAN
+            self.y=-HALF_WIDTH
+            self.x=220
+            self.squares.append(Square(self.color,(self.x-FULL_WIDTH,self.y)))
+            self.squares.append(Square(self.color,(self.x,self.y)))
+            self.squares.append(Square(self.color,(self.x+FULL_WIDTH,self.y)))
+            self.squares.append(Square(self.color,(self.x+FULL_WIDTH,self.y-FULL_WIDTH)))
+        elif(type==6): #L
+            self.color=PURPLE
+            self.y=-HALF_WIDTH
+            self.x=220
+            self.squares.append(Square(self.color,(self.x-FULL_WIDTH,self.y)))
+            self.squares.append(Square(self.color,(self.x,self.y)))
+            self.squares.append(Square(self.color,(self.x+FULL_WIDTH,self.y)))
+            self.squares.append(Square(self.color,(self.x-FULL_WIDTH,self.y-FULL_WIDTH)))
+    def move_up(self):
+        self.y-=FULL_WIDTH
+        for square in self.squares:
+            square.move_up()
+    def move_down(self):
+        self.y+=FULL_WIDTH
+        for square in self.squares:
+            square.move_down()
+    def move_left(self):
+        self.x-=FULL_WIDTH
+        for square in self.squares:
+            square.move_left()
+    def move_right(self):
+        self.x+=FULL_WIDTH
+        for square in self.squares:
+            square.move_right()
+    def draw(self):
+        for square in self.squares:
+            square.draw()
+    
 class Tetris():
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("Adhit's Tetris")
-        self.test_square=Square(RED,(20,20))
-    def handle_key_event(self,square):
+        self.test_block=Block(6)
+    def handle_key_event(self,block):
         keys=pygame.key.get_pressed()
         if keys[pygame.K_UP]:
-            square.move_up()
+            block.move_up()
         if keys[pygame.K_DOWN]:
-            square.move_down()
+            block.move_down()
         if keys[pygame.K_LEFT]:
-            square.move_left()
+            block.move_left()
         if keys[pygame.K_RIGHT]:
-            square.move_right()
-    def draw(self,square):
+            block.move_right()
+    def draw(self,block):
         screen.fill(BG_COLOR)
-        square.draw()
+        block.draw()
         pygame.display.flip()
     def main_loop(self):
+        pygame.key.set_repeat(50,20)
         while True: #game loop: read_events->update_data->draw_objects
-            clock.tick(10) #iterations in one second
-            #read_events
+            clock.tick(1000) #iterations in one second
+            #read_events and update_data
             for event in pygame.event.get():
                 if event.type==pygame.QUIT:
                     sys.exit()
-            self.handle_key_event(self.test_square)
+                if event.type==pygame.KEYDOWN:
+                    self.handle_key_event(self.test_block)
             #draw_objects
-            self.draw(self.test_square)       
-
+            self.draw(self.test_block) 
 if __name__=='__main__':
     tetris=Tetris()
     tetris.main_loop()
