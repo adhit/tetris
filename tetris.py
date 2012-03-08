@@ -123,66 +123,123 @@ class Block():
             self.squares.append(Square(self.color,(self.x,self.y)))
             self.squares.append(Square(self.color,(self.x+FULL_WIDTH,self.y)))
             self.squares.append(Square(self.color,(self.x-FULL_WIDTH,self.y-FULL_WIDTH)))
-    def move_up(self):
+    def move_up(self,grid):
+        if(not self.can_move(0,-1,grid)): return
         self.y-=FULL_WIDTH
         for square in self.squares:
             square.move_up()
-    def move_down(self):
+    def move_down(self,grid):
+        if(not self.can_move(0,1,grid)): return False
         self.y+=FULL_WIDTH
         for square in self.squares:
             square.move_down()
-    def move_left(self):
+        return True
+    def move_left(self,grid):
+        if(not self.can_move(-1,0,grid)): return
         self.x-=FULL_WIDTH
         for square in self.squares:
             square.move_left()
-    def move_right(self):
+    def move_right(self,grid):
+        if(not self.can_move(1,0,grid)): return
         self.x+=FULL_WIDTH
         for square in self.squares:
             square.move_right()
     def draw(self):
         for square in self.squares:
             square.draw()
-    def rotate_CW(self):
+    def rotate_CW(self,grid):
+        if(not self.can_CW(grid)):
+            return
         for square in self.squares:
             square.x-=self.x
             square.y-=self.y
             square.rotate_CW()
             square.x+=self.x
             square.y+=self.y
-    def rotate_CCW(self):
+    def rotate_CCW(self,grid):
+        if(not self.can_CCW(grid)): return
         for square in self.squares:
             square.x-=self.x
             square.y-=self.y
             square.rotate_CCW()
             square.x+=self.x
             square.y+=self.y
+    def can_move(self,dx,dy,grid):
+        for square in self.squares:
+            x=(square.x/FULL_WIDTH)+dx
+            y=(square.y/FULL_WIDTH)+dy
+            if(y<-2 or y>=20 or x<0 or x>=10 or grid[y][x] is not None):
+                return False
+        return True
+    def can_CW(self,grid):
+        for square in self.squares:
+            x=square.x-self.x
+            y=square.y-self.y
+            temp=x
+            x=-y
+            y=temp
+            x=(x+self.x)/FULL_WIDTH
+            y=(y+self.y)/FULL_WIDTH
+            if(y<-2 or y>=20 or x<0 or x>=10 or grid[y][x] is not None): return False
+        return True
+    def can_CCW(self,grid):
+        for square in self.squares:
+            x=square.x-self.x
+            y=square.y-self.y
+            temp=x
+            x=y
+            y=-temp
+            x=(x+self.x)/FULL_WIDTH
+            y=(y+self.y)/FULL_WIDTH
+            if(y<-2 or y>=20 or x<0 or x>=10 or grid[y][x] is not None): return False
+        return True
+            
 
 class Tetris():
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("Adhit's Tetris")        
+        pygame.display.set_caption("Adhit's Tetris")
+        self.speed=2000
+        self.grid=[]
+        for i in range(20):
+            self.grid.append([])
+            for j in range(10):
+                self.grid[i].append(None)
     def handle_key_event(self,block):
         keys=pygame.key.get_pressed()
         if(keys[pygame.K_UP]):
-            block.move_up()
+            block.move_up(self.grid)
         if(keys[pygame.K_DOWN]):
-            block.move_down()
+            if(not block.move_down(self.grid)): self.settle_block()
         if(keys[pygame.K_LEFT]):
-            block.move_left()
+            block.move_left(self.grid)
         if(keys[pygame.K_RIGHT]):
-            block.move_right()
+            block.move_right(self.grid)
         if(keys[pygame.K_a]):
-            block.rotate_CCW()
+            block.rotate_CCW(self.grid)
         if(keys[pygame.K_d]):
-            block.rotate_CW()
-    def draw(self,block):
+            block.rotate_CW(self.grid)
+    def draw(self):
         screen.fill(BG_COLOR)
-        block.draw()
+        self.crnt.draw()
+        for i in range(20):
+            for j in range(10):
+                if(self.grid[i][j] is not None): self.grid[i][j].draw()
         pygame.display.flip()
+    def custom_tick(self):
+        #pygame.time.set_timer(pygame.USEREVENT,0)
+        if(not self.crnt.move_down(self.grid)): self.settle_block()
+    def settle_block(self):
+        for square in self.crnt.squares:
+            self.grid[square.y/FULL_WIDTH][square.x/FULL_WIDTH]=square
+        self.crnt=Block(random.randint(0,6))
+        pygame.time.set_timer(pygame.USEREVENT,0)
+        pygame.time.set_timer(pygame.USEREVENT,self.speed)
     def main_loop(self):
         pygame.key.set_repeat(200,50)
         self.crnt=Block(random.randint(0,6))
         #self.crnt=Block(6)
+        pygame.time.set_timer(pygame.USEREVENT,self.speed) #this is the 'moving down' tick
         while True: #game loop: read_events->update_data->draw_objects
             clock.tick(10) #iterations in one second
             #read_events and update_data
@@ -191,8 +248,10 @@ class Tetris():
                     sys.exit()
                 if event.type==pygame.KEYDOWN:
                     self.handle_key_event(self.crnt)
+                if event.type==pygame.USEREVENT: #time for block to move down one square
+                    self.custom_tick()
             #draw_objects
-            self.draw(self.crnt) 
+            self.draw() 
 if __name__=='__main__':
     tetris=Tetris()
     tetris.main_loop()
