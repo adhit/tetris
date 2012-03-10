@@ -15,6 +15,7 @@ PINK=255,0,191
 WHITE=255,255,255
 BLACK=0,0,0
 BG_COLOR=204,255,255
+GUI_COLOR=224,224,224
 LINE_COLOR=BLACK
 
 #define measures
@@ -23,10 +24,11 @@ HALF_WIDTH=10
 FULL_WIDTH=2*HALF_WIDTH
 LINE_WIDTH=2
 MID_X=WIDTH/2
+PREVIEW_POS=[(WIDTH+7*FULL_WIDTH,3*FULL_WIDTH),(WIDTH+12*FULL_WIDTH,3*FULL_WIDTH),(WIDTH+17*FULL_WIDTH,3*FULL_WIDTH)]
 
 #pygame things
 clock=pygame.time.Clock()
-screen=pygame.display.set_mode((WIDTH,HEIGHT));
+screen=pygame.display.set_mode((3*WIDTH,HEIGHT));
 
 #timing things
 last_move=0
@@ -61,6 +63,18 @@ class Square():
         corners.append((self.x-HALF_WIDTH,self.y+HALF_WIDTH))
         screen.lock()
         pygame.draw.rect(screen,self.color,pygame.Rect((self.x-HALF_WIDTH,self.y-HALF_WIDTH),(FULL_WIDTH,FULL_WIDTH)))
+        pygame.draw.lines(screen,LINE_COLOR,True,corners,LINE_WIDTH)
+        screen.unlock()
+    def draw_moved(self,dx,dy):
+        x=self.x+dx
+        y=self.y+dy
+        corners=[]
+        corners.append((x-HALF_WIDTH,y-HALF_WIDTH))
+        corners.append((x+HALF_WIDTH,y-HALF_WIDTH))
+        corners.append((x+HALF_WIDTH,y+HALF_WIDTH))
+        corners.append((x-HALF_WIDTH,y+HALF_WIDTH))
+        screen.lock()
+        pygame.draw.rect(screen,self.color,pygame.Rect((x-HALF_WIDTH,y-HALF_WIDTH),(FULL_WIDTH,FULL_WIDTH)))
         pygame.draw.lines(screen,LINE_COLOR,True,corners,LINE_WIDTH)
         screen.unlock()
 
@@ -149,6 +163,9 @@ class Block():
     def draw(self):
         for square in self.squares:
             square.draw()
+    def draw_moved(self,dx,dy):
+        for square in self.squares:
+            square.draw_moved(dx,dy)
     def rotate_CW(self,grid):
         if(not self.can_CW(grid)):
             return
@@ -194,8 +211,7 @@ class Block():
             x=(x+self.x)/FULL_WIDTH
             y=(y+self.y)/FULL_WIDTH
             if(y>=20 or x<0 or x>=10 or (y>=0 and grid[y][x] is not None)): return False
-        return True
-            
+        return True 
 
 class Tetris():
     def __init__(self):
@@ -239,14 +255,31 @@ class Tetris():
                 else: s=s+"1"
             print s
     def draw(self,end):
-        screen.fill(BG_COLOR)
+        screen.fill(GUI_COLOR)
+        pygame.draw.rect(screen,BG_COLOR,pygame.Rect((0,0),(WIDTH,HEIGHT)))
+        pygame.draw.rect(screen,BLACK,pygame.Rect((0,0),(WIDTH,HEIGHT)),LINE_WIDTH)
+        self.draw_GUI()
         self.crnt.draw()
         for i in range(20):
             for j in range(10):
                 if(self.grid[i][j] is not None): self.grid[i][j].draw()
         pygame.display.flip()
+    def draw_GUI(self):
+        #creating previews
+        for i in range(3):
+            (x,y)=PREVIEW_POS[i]
+            pygame.draw.rect(screen,BG_COLOR,pygame.Rect((x-2*FULL_WIDTH,y-2*FULL_WIDTH),(4*FULL_WIDTH+1,4*FULL_WIDTH+1)))
+            pygame.draw.rect(screen,BLACK,pygame.Rect((x-2*FULL_WIDTH,y-2*FULL_WIDTH),(4*FULL_WIDTH+1,4*FULL_WIDTH+1)),LINE_WIDTH)
+            block=self.preview[i]
+            block.draw_moved(x-block.x,y-block.y)
+        #creating preview texts
+        font=pygame.font.SysFont("Lucida Console",20,True)
+        text=font.render("Next:",1,BLACK)
+        screen.blit(text,(WIDTH+FULL_WIDTH,5*FULL_WIDTH))
+        for i in range(3):
+            text=font.render(str(i+1),1,BLACK)
+            screen.blit(text,(PREVIEW_POS[i][0],5*FULL_WIDTH))
     def custom_tick(self):
-        #pygame.time.set_timer(pygame.USEREVENT,0)
         if(not self.crnt.move_down(self.grid)): self.settle_block()
     def clear_lines(self):
         count=0
@@ -295,8 +328,6 @@ class Tetris():
         print "Score: "+str(self.score)
     def settle_block(self):
         if(not self.first_settle): return
-#print "Settling"
-#print str(self.crnt.x)+" "+str(self.crnt.y)
         self.first_settle=False
         for square in self.crnt.squares:
             if(square.y<HALF_WIDTH):
@@ -304,15 +335,22 @@ class Tetris():
             else: self.grid[square.y/FULL_WIDTH][square.x/FULL_WIDTH]=square
         if(not self.game): return
         self.clear_lines()
-        self.crnt=Block(random.randint(0,6))
+        self.crnt=self.get_next()
         pygame.time.set_timer(pygame.USEREVENT,0)
         pygame.time.set_timer(pygame.USEREVENT,self.speed)
+    def get_next(self):
+        temp=self.preview[0]
+        for i in range(3): self.preview[i]=self.preview[i+1]
+        self.preview[3]=Block(random.randint(0,6))
+        return temp
     def main_loop(self):
         pygame.mixer.init()
         pygame.mixer.music.set_volume(0.5)
         pygame.mixer.music.play(-1)
         pygame.key.set_repeat(200,50)
         self.crnt=Block(random.randint(0,6))
+        self.preview=[]
+        for i in range(4): self.preview.append(Block(random.randint(0,6)))
         pygame.time.set_timer(pygame.USEREVENT,self.speed) #this is the 'moving down' tick
         while self.game: #game loop: read_events->update_data->draw_objects
             #read_events and update_data
@@ -346,11 +384,13 @@ if __name__=='__main__':
                         break
                     if(keys[pygame.K_n]):
                         sys.exit()
+            pygame.draw.rect(screen,WHITE,((0,90),(WIDTH,120)))
             font=pygame.font.SysFont("Lucida Console",30,True)
             text=font.render("Game Over!",1,BLACK)
             screen.blit(text,(10,100))
+            font=pygame.font.SysFont("Lucida Console",20,True)
             text=font.render("Score: "+str(score),1,BLACK)
-            screen.blit(text,(10,130))
+            screen.blit(text,(10,140))
             font=pygame.font.SysFont("Lucida Console",20,True)
             text=font.render("Continue? (y/n)",1,BLUE)
             screen.blit(text,(10,180))
