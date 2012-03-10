@@ -25,6 +25,7 @@ FULL_WIDTH=2*HALF_WIDTH
 LINE_WIDTH=2
 MID_X=WIDTH/2
 PREVIEW_POS=[(WIDTH+7*FULL_WIDTH,3*FULL_WIDTH),(WIDTH+12*FULL_WIDTH,3*FULL_WIDTH),(WIDTH+17*FULL_WIDTH,3*FULL_WIDTH)]
+SAVED_POS=(WIDTH+7*FULL_WIDTH,9*FULL_WIDTH)
 
 #pygame things
 clock=pygame.time.Clock()
@@ -230,7 +231,17 @@ class Tetris():
         for i in range(20):
             self.grid.append([])
             for j in range(10):
-                self.grid[i].append(None)
+                self.grid[i].append(None)   
+        pygame.mixer.init()
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
+        pygame.key.set_repeat(200,50)
+        self.crnt=Block(random.randint(0,6))
+        self.preview=[]
+        for i in range(4): self.preview.append(Block(random.randint(0,6)))
+        self.saved=None
+        pygame.time.set_timer(pygame.USEREVENT,self.speed) #this is the 'moving down' tick
+
     def handle_key_event(self,block):
         keys=pygame.key.get_pressed()
         if(keys[pygame.K_UP]):
@@ -279,6 +290,23 @@ class Tetris():
         for i in range(3):
             text=font.render(str(i+1),1,BLACK)
             screen.blit(text,(PREVIEW_POS[i][0],5*FULL_WIDTH))
+        #creating saved
+        (x,y)=SAVED_POS
+        pygame.draw.rect(screen,BG_COLOR,pygame.Rect((x-2*FULL_WIDTH,y-2*FULL_WIDTH),(4*FULL_WIDTH+1,4*FULL_WIDTH+1)))
+        pygame.draw.rect(screen,BLACK,pygame.Rect((x-2*FULL_WIDTH,y-2*FULL_WIDTH),(4*FULL_WIDTH+1,4*FULL_WIDTH+1)),LINE_WIDTH)
+        block=self.saved
+        if(block is not None): block.draw_moved(x-block.x,y-block.y)
+        #creating saved text
+        font=pygame.font.SysFont("Lucida Console",20,True)
+        text=font.render("Saved:",1,BLACK)
+        screen.blit(text,(WIDTH+FULL_WIDTH,9*FULL_WIDTH))
+        #creating score and level text:
+        font=pygame.font.SysFont("Lucida Console",20,True)
+        text=font.render("Score: "+str(self.score),1,BLACK)
+        screen.blit(text,(WIDTH+10*FULL_WIDTH,7*FULL_WIDTH))
+        text=font.render("Level: "+str(self.level),1,BLACK)
+        screen.blit(text,(WIDTH+10*FULL_WIDTH,8*FULL_WIDTH))
+
     def custom_tick(self):
         if(not self.crnt.move_down(self.grid)): self.settle_block()
     def clear_lines(self):
@@ -344,14 +372,6 @@ class Tetris():
         self.preview[3]=Block(random.randint(0,6))
         return temp
     def main_loop(self):
-        pygame.mixer.init()
-        pygame.mixer.music.set_volume(0.5)
-        pygame.mixer.music.play(-1)
-        pygame.key.set_repeat(200,50)
-        self.crnt=Block(random.randint(0,6))
-        self.preview=[]
-        for i in range(4): self.preview.append(Block(random.randint(0,6)))
-        pygame.time.set_timer(pygame.USEREVENT,self.speed) #this is the 'moving down' tick
         while self.game: #game loop: read_events->update_data->draw_objects
             #read_events and update_data
             self.first_settle=True
