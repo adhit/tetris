@@ -244,6 +244,11 @@ class Tetris():
 
     def handle_key_event(self,block):
         keys=pygame.key.get_pressed()
+        if(keys[pygame.K_ESCAPE]): sys.exit()
+        if(keys[pygame.K_p]):
+            if(not self.paused): self.pause()
+            else: self.paused=False
+        if(self.paused): return
         if(keys[pygame.K_UP]):
             block.move_up(self.grid)
         if(keys[pygame.K_DOWN]):
@@ -257,14 +262,7 @@ class Tetris():
         if(keys[pygame.K_d]):
             block.rotate_CW(self.grid)
         if(keys[pygame.K_s]):
-            self.debug()
-    def debug(self):
-        for i in range(20):
-            s=""
-            for j in range(10):
-                if(self.grid[i][j] is None): s=s+"0"
-                else: s=s+"1"
-            print s
+            self.save_load()
     def draw(self,end):
         screen.fill(GUI_COLOR)
         pygame.draw.rect(screen,BG_COLOR,pygame.Rect((0,0),(WIDTH,HEIGHT)))
@@ -274,6 +272,14 @@ class Tetris():
         for i in range(20):
             for j in range(10):
                 if(self.grid[i][j] is not None): self.grid[i][j].draw()
+        if(self.paused):
+            pygame.draw.rect(screen,WHITE,((0,120),(WIDTH,70)))
+            font=pygame.font.SysFont("Lucida Console",30,True)
+            text=font.render("Paused!",1,BLACK)
+            screen.blit(text,(20,130))
+            font=pygame.font.SysFont("Lucida Console",20,True)
+            text=font.render("P to Continue",1,BLACK)
+            screen.blit(text,(10,160))
         pygame.display.flip()
     def draw_GUI(self):
         #creating previews
@@ -306,7 +312,29 @@ class Tetris():
         screen.blit(text,(WIDTH+10*FULL_WIDTH,7*FULL_WIDTH))
         text=font.render("Level: "+str(self.level),1,BLACK)
         screen.blit(text,(WIDTH+10*FULL_WIDTH,8*FULL_WIDTH))
-
+        #creating controls text:
+        font=pygame.font.SysFont("Lucida Console",20,True)
+        text=font.render("CONTROL",1,BLACK)
+        screen.blit(text,(WIDTH+FULL_WIDTH,13*FULL_WIDTH))
+        text=font.render("Arrow: Move",1,BLACK)
+        screen.blit(text,(WIDTH+FULL_WIDTH,14*FULL_WIDTH))
+        text=font.render("A/D: Rotate CCW/CW",1,BLACK)
+        screen.blit(text,(WIDTH+FULL_WIDTH,15*FULL_WIDTH))
+        text=font.render("S: Save/Load Block",1,BLACK)
+        screen.blit(text,(WIDTH+FULL_WIDTH,16*FULL_WIDTH))
+        text=font.render("P: Pause",1,BLACK)
+        screen.blit(text,(WIDTH+FULL_WIDTH,17*FULL_WIDTH))
+    def pause(self):
+        self.paused=True
+    def save_load(self):
+        if(self.saved is None): #saving
+            self.saved=Block(self.crnt.type)
+            self.crnt=self.get_next()
+        else: #loading
+            for i in range(3): self.preview[3-i]=self.preview[3-i-1]
+            self.preview[0]=Block(self.crnt.type)
+            self.crnt=self.saved
+            self.saved=None
     def custom_tick(self):
         if(not self.crnt.move_down(self.grid)): self.settle_block()
     def clear_lines(self):
@@ -353,7 +381,6 @@ class Tetris():
             self.speed=int(math.ceil(self.speed_mult*self.speed))
             self.cleared-=self.required
             self.required=int(math.ceil(self.required/self.speed_mult))
-        print "Score: "+str(self.score)
     def settle_block(self):
         if(not self.first_settle): return
         self.first_settle=False
@@ -372,6 +399,7 @@ class Tetris():
         self.preview[3]=Block(random.randint(0,6))
         return temp
     def main_loop(self):
+        self.paused=False
         while self.game: #game loop: read_events->update_data->draw_objects
             #read_events and update_data
             self.first_settle=True
@@ -380,6 +408,7 @@ class Tetris():
                     sys.exit()
                 if event.type==pygame.KEYDOWN:
                     self.handle_key_event(self.crnt)
+                if self.paused: break
                 if event.type==pygame.USEREVENT: #time for block to move down one square
                     self.custom_tick()
             #draw_objects
