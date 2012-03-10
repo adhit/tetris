@@ -201,6 +201,7 @@ class Tetris():
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("Adhit's Tetris")
+        pygame.mixer.music.load("tetris.mid")
         self.speed=2000
         self.level=0
         self.cleared=0
@@ -208,6 +209,7 @@ class Tetris():
         self.speed_mult=0.8
         self.score_guide=[40,100,300,1200]
         self.score=0
+        self.game=True
         self.grid=[]
         for i in range(20):
             self.grid.append([])
@@ -236,7 +238,7 @@ class Tetris():
                 if(self.grid[i][j] is None): s=s+"0"
                 else: s=s+"1"
             print s
-    def draw(self):
+    def draw(self,end):
         screen.fill(BG_COLOR)
         self.crnt.draw()
         for i in range(20):
@@ -297,16 +299,22 @@ class Tetris():
 #print str(self.crnt.x)+" "+str(self.crnt.y)
         self.first_settle=False
         for square in self.crnt.squares:
-            self.grid[square.y/FULL_WIDTH][square.x/FULL_WIDTH]=square
+            if(square.y<HALF_WIDTH):
+                self.game=False
+            else: self.grid[square.y/FULL_WIDTH][square.x/FULL_WIDTH]=square
+        if(not self.game): return
         self.clear_lines()
         self.crnt=Block(random.randint(0,6))
         pygame.time.set_timer(pygame.USEREVENT,0)
         pygame.time.set_timer(pygame.USEREVENT,self.speed)
     def main_loop(self):
+        pygame.mixer.init()
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
         pygame.key.set_repeat(200,50)
         self.crnt=Block(random.randint(0,6))
         pygame.time.set_timer(pygame.USEREVENT,self.speed) #this is the 'moving down' tick
-        while True: #game loop: read_events->update_data->draw_objects
+        while self.game: #game loop: read_events->update_data->draw_objects
             #read_events and update_data
             self.first_settle=True
             for event in pygame.event.get():
@@ -317,7 +325,34 @@ class Tetris():
                 if event.type==pygame.USEREVENT: #time for block to move down one square
                     self.custom_tick()
             #draw_objects
-            self.draw() 
+            self.draw(False) 
+        return self.score
+
 if __name__=='__main__':
-    tetris=Tetris()
-    tetris.main_loop()
+    start=True
+    while(start):
+        tetris=Tetris()
+        score=tetris.main_loop()
+        start=False
+        while(not start):
+            for event in pygame.event.get():
+                if event.type==pygame.QUIT:
+                    sys.exit()
+                if event.type==pygame.KEYDOWN:
+                    keys=pygame.key.get_pressed()
+                    if(keys[pygame.K_y]):
+                        start=True
+                        pygame.mixer.music.stop()
+                        break
+                    if(keys[pygame.K_n]):
+                        sys.exit()
+            font=pygame.font.SysFont("Lucida Console",30,True)
+            text=font.render("Game Over!",1,BLACK)
+            screen.blit(text,(10,100))
+            text=font.render("Score: "+str(score),1,BLACK)
+            screen.blit(text,(10,130))
+            font=pygame.font.SysFont("Lucida Console",20,True)
+            text=font.render("Continue? (y/n)",1,BLUE)
+            screen.blit(text,(10,180))
+            pygame.display.flip()
+
