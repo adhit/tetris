@@ -1,6 +1,7 @@
 import os,sys
 import pygame
 import random
+import math
 
 #define colors
 RED=255,0,64
@@ -65,6 +66,7 @@ class Square():
 
 class Block():
     def __init__(self,type):
+#type=0
         self.type=type
         self.squares=[]
         if(type==0): #4 squares vertical
@@ -122,7 +124,7 @@ class Block():
             self.squares.append(Square(self.color,(self.x-FULL_WIDTH,self.y)))
             self.squares.append(Square(self.color,(self.x,self.y)))
             self.squares.append(Square(self.color,(self.x+FULL_WIDTH,self.y)))
-            self.squares.append(Square(self.color,(self.x-FULL_WIDTH,self.y-FULL_WIDTH)))
+            self.squares.append(Square(self.color,(self.x+FULL_WIDTH,self.y-FULL_WIDTH)))
     def move_up(self,grid):
         if(not self.can_move(0,-1,grid)): return
         self.y-=FULL_WIDTH
@@ -168,7 +170,7 @@ class Block():
         for square in self.squares:
             x=(square.x/FULL_WIDTH)+dx
             y=(square.y/FULL_WIDTH)+dy
-            if(y<-2 or y>=20 or x<0 or x>=10 or grid[y][x] is not None):
+            if(y>=20 or x<0 or x>=10 or (y>=0 and grid[y][x] is not None)):
                 return False
         return True
     def can_CW(self,grid):
@@ -180,7 +182,7 @@ class Block():
             y=temp
             x=(x+self.x)/FULL_WIDTH
             y=(y+self.y)/FULL_WIDTH
-            if(y<-2 or y>=20 or x<0 or x>=10 or grid[y][x] is not None): return False
+            if(y>=20 or x<0 or x>=10 or (y>=0 and grid[y][x] is not None)): return False
         return True
     def can_CCW(self,grid):
         for square in self.squares:
@@ -191,7 +193,7 @@ class Block():
             y=-temp
             x=(x+self.x)/FULL_WIDTH
             y=(y+self.y)/FULL_WIDTH
-            if(y<-2 or y>=20 or x<0 or x>=10 or grid[y][x] is not None): return False
+            if(y>=20 or x<0 or x>=10 or (y>=0 and grid[y][x] is not None)): return False
         return True
             
 
@@ -200,6 +202,12 @@ class Tetris():
         pygame.init()
         pygame.display.set_caption("Adhit's Tetris")
         self.speed=2000
+        self.level=0
+        self.cleared=0
+        self.required=5
+        self.speed_mult=0.8
+        self.score_guide=[40,100,300,1200]
+        self.score=0
         self.grid=[]
         for i in range(20):
             self.grid.append([])
@@ -219,6 +227,15 @@ class Tetris():
             block.rotate_CCW(self.grid)
         if(keys[pygame.K_d]):
             block.rotate_CW(self.grid)
+        if(keys[pygame.K_s]):
+            self.debug()
+    def debug(self):
+        for i in range(20):
+            s=""
+            for j in range(10):
+                if(self.grid[i][j] is None): s=s+"0"
+                else: s=s+"1"
+            print s
     def draw(self):
         screen.fill(BG_COLOR)
         self.crnt.draw()
@@ -229,20 +246,69 @@ class Tetris():
     def custom_tick(self):
         #pygame.time.set_timer(pygame.USEREVENT,0)
         if(not self.crnt.move_down(self.grid)): self.settle_block()
+    def clear_lines(self):
+        count=0
+        for i in range(20):
+            full=True
+            for j in range(10):
+                if(self.grid[i][j] is None): 
+                    full=False
+                    break
+            if(full):
+                count+=1
+                for j in range(10):
+                    self.grid[i][j]=None
+        i=19
+        j=18
+        while(i>0 and j>=0):
+            null=True
+            for k in range(10):
+                if(self.grid[i][k] is not None):
+                    null=False
+                    break
+            if(null):
+                j=min(i-1,j)
+                while(j>=0 and null):
+                    null=True
+                    for k in range(10):
+                        if(self.grid[j][k] is not None):
+                            null=False
+                            break
+                    if(null): j-=1
+                if(j<0): break
+                for k in range(10):
+                    self.grid[i][k]=self.grid[j][k]
+                    self.grid[j][k]=None
+                    if(self.grid[i][k] is not None): self.grid[i][k].y=HALF_WIDTH+i*FULL_WIDTH
+                j-=1
+            i-=1
+        if(count>0):
+            self.score+=self.score_guide[count-1]*(self.level+1)
+        self.cleared+=count
+        if(self.cleared>=self.required):
+            self.level+=1
+            self.speed=int(math.ceil(self.speed_mult*self.speed))
+            self.cleared-=self.required
+            self.required=int(math.ceil(self.required/self.speed_mult))
+        print "Score: "+str(self.score)
     def settle_block(self):
+        if(not self.first_settle): return
+#print "Settling"
+#print str(self.crnt.x)+" "+str(self.crnt.y)
+        self.first_settle=False
         for square in self.crnt.squares:
             self.grid[square.y/FULL_WIDTH][square.x/FULL_WIDTH]=square
+        self.clear_lines()
         self.crnt=Block(random.randint(0,6))
         pygame.time.set_timer(pygame.USEREVENT,0)
         pygame.time.set_timer(pygame.USEREVENT,self.speed)
     def main_loop(self):
         pygame.key.set_repeat(200,50)
         self.crnt=Block(random.randint(0,6))
-        #self.crnt=Block(6)
         pygame.time.set_timer(pygame.USEREVENT,self.speed) #this is the 'moving down' tick
         while True: #game loop: read_events->update_data->draw_objects
-            clock.tick(10) #iterations in one second
             #read_events and update_data
+            self.first_settle=True
             for event in pygame.event.get():
                 if event.type==pygame.QUIT:
                     sys.exit()
