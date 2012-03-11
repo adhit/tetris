@@ -249,8 +249,8 @@ class Tetris():
             if(not self.paused): self.pause()
             else: self.paused=False
         if(self.paused): return
-        if(keys[pygame.K_UP]):
-            block.move_up(self.grid)
+#       if(keys[pygame.K_UP]):
+#           block.move_up(self.grid)
         if(keys[pygame.K_DOWN]):
             if(not block.move_down(self.grid)): self.settle_block()
         if(keys[pygame.K_LEFT]):

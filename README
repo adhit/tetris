@@ -1,1 +1,11 @@
 Simple Tetris with Python
+Run with command: $ python tetris.py
+
+CONTROLS
+Arrow (Left/Right/Down): Move the current block left/right/down
+A/D: Rotate the current block CCW/CW
+S: Save or Load into/from one block buffer
+P: Pause
+ESC: Exit game
+
+When gameover, press y to play again, n to exit game
